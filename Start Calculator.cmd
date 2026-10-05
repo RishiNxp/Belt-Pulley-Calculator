@@ -23,9 +23,20 @@ call npm.cmd ci --include=dev --prefer-offline --no-audit --no-fund
 if errorlevel 1 goto install_error
 
 :launch
+if /I "%~1"=="--create-shortcut" goto shortcut
 echo Opening the calculator...
 call npm.cmd start
 if errorlevel 1 goto start_error
+popd
+exit /b 0
+
+:shortcut
+echo Creating the desktop shortcut...
+call npm.cmd run desktop:shortcut
+if errorlevel 1 goto shortcut_error
+echo.
+echo Open Belt Pulley Calculator from the new icon on your desktop.
+pause
 popd
 exit /b 0
 
@@ -48,6 +59,11 @@ goto failure
 :start_error
 echo.
 echo The calculator could not start. Check the messages above.
+goto failure
+
+:shortcut_error
+echo.
+echo The desktop shortcut could not be created. Check the messages above.
 goto failure
 
 :folder_error

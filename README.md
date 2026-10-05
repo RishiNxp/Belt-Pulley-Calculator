@@ -24,6 +24,12 @@ For a clean, repeatable installation, use `npm ci` in place of `npm install`. Ke
 
 When updating the source with Git, close the app and run `npm ci` again before launching so any changed dependencies are installed.
 
+### Add an icon to your Windows desktop
+
+Double-click **`Create Desktop Shortcut.cmd`** in the extracted project folder. It prepares the application and creates a **Belt Pulley Calculator** icon on your desktop. You can also run `npm run desktop:shortcut` from the project folder.
+
+Double-click that desktop icon to open the calculator directly in its own window. Keep the project folder in place: the shortcut points to its local application files. If you move the folder or update the source, run `Create Desktop Shortcut.cmd` again to rebuild the app and create a shortcut for the current location.
+
 ### Saved designs
 
 The last sketch saves automatically in the desktop app's own data folder. On Windows this is `%APPDATA%\BeltPulleyCalculator`. Moving or updating the downloaded repository keeps that saved sketch. The desktop app and browser version have separate saved designs; an existing browser sketch is not automatically copied into desktop mode.

@@ -11,6 +11,7 @@
   "scripts": {
     "postinstall": "install-electron",
     "start": "npm run build && electron .",
+    "desktop:shortcut": "npm run build && node desktop/create-shortcut.cjs",
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "test": "vitest run"
