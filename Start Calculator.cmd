@@ -12,7 +12,6 @@ if errorlevel 1 goto missing_node
 node -e "const [major, minor] = process.versions.node.split('.').map(Number); process.exit(major > 22 || (major === 22 && minor >= 12) ? 0 : 1)"
 if errorlevel 1 goto old_node
 
-if not exist "node_modules\electron\dist\electron.exe" goto install
 if not exist "node_modules\.bin\vite.cmd" goto install
 if not exist "node_modules\.bin\tsc.cmd" goto install
 goto launch
@@ -23,20 +22,10 @@ call npm.cmd ci --include=dev --prefer-offline --no-audit --no-fund
 if errorlevel 1 goto install_error
 
 :launch
-if /I "%~1"=="--create-shortcut" goto shortcut
-echo Opening the calculator...
+echo Opening Belt Pulley Calculator in your browser...
+echo Keep this window open while using the website. Press Ctrl+C to stop it.
 call npm.cmd start
 if errorlevel 1 goto start_error
-popd
-exit /b 0
-
-:shortcut
-echo Creating the desktop shortcut...
-call npm.cmd run desktop:shortcut
-if errorlevel 1 goto shortcut_error
-echo.
-echo Open Belt Pulley Calculator from the new icon on your desktop.
-pause
 popd
 exit /b 0
 
@@ -59,11 +48,6 @@ goto failure
 :start_error
 echo.
 echo The calculator could not start. Check the messages above.
-goto failure
-
-:shortcut_error
-echo.
-echo The desktop shortcut could not be created. Check the messages above.
 goto failure
 
 :folder_error

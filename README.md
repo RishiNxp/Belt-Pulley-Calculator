@@ -1,51 +1,48 @@
 # Belt Pulley Calculator
 
-A local-first, 2D belt-layout workspace built with React, TypeScript, Vite, and SVG. Run it in its own desktop window with Electron, or in a browser while developing. The starter design has four pulleys and saves automatically on your computer.
+A browser-based, 2D belt-layout workspace built with React, TypeScript, Vite, and SVG. The starter design has four pulleys and saves automatically in your browser. Calculations run locally on your computer.
 
 ## Download and run locally
 
 1. Install **[Node.js 24 LTS](https://nodejs.org/en/download)**, which includes npm. Node.js 22.12 or newer is required.
 2. On the GitHub repository page, choose **Code → Download ZIP**, then extract the ZIP. You can also clone the repository with Git.
 3. Open a terminal in the extracted folder containing `package.json`.
-4. Install the dependencies, then open the calculator:
+4. Install the dependencies, then start the website:
 
 ```sh
 npm install
 npm start
 ```
 
-The calculator opens in its own desktop window. `npm start` builds the application before opening it, so local code changes are included each time. On later launches, run only `npm start`.
+The calculator opens automatically in your browser, usually at `http://127.0.0.1:5173`. Use the address printed in the terminal if that port is busy. Leave the terminal open while using the website and press `Ctrl+C` to stop it. On later launches, run only `npm start`.
 
-**Windows shortcut:** after installing Node.js and extracting the ZIP, double-click **`Start Calculator.cmd`**. It installs missing dependencies on the first launch and opens the calculator. In PowerShell, use `npm.cmd` instead of `npm` if PowerShell blocks npm scripts.
+**Windows:** after installing Node.js and extracting the ZIP, double-click **`Start Calculator.cmd`**. It installs missing dependencies on the first launch and opens the website in your browser. Leave its window open while using the calculator. In PowerShell, use `npm.cmd` instead of `npm` if PowerShell blocks npm scripts.
 
-Internet is required for the first installation, including Electron's download. After setup, `npm start` runs entirely from local files and works offline. No hosted website or separate local web server is needed for desktop mode.
+Internet is required for the first dependency installation. After setup, `npm start` serves the website locally and works offline.
 
 For a clean, repeatable installation, use `npm ci` in place of `npm install`. Keep `package-lock.json` in the repository; do not include `node_modules` or `dist`.
 
-When updating the source with Git, close the app and run `npm ci` again before launching so any changed dependencies are installed.
-
-### Add an icon to your Windows desktop
-
-Double-click **`Create Desktop Shortcut.cmd`** in the extracted project folder. It prepares the application and creates a **Belt Pulley Calculator** icon on your desktop. You can also run `npm run desktop:shortcut` from the project folder.
-
-Double-click that desktop icon to open the calculator directly in its own window. Keep the project folder in place: the shortcut points to its local application files. If you move the folder or update the source, run `Create Desktop Shortcut.cmd` again to rebuild the app and create a shortcut for the current location.
+When updating the source with Git, stop the local server and run `npm ci` again before launching so any changed dependencies are installed.
 
 ### Saved designs
 
-The last sketch saves automatically in the desktop app's own data folder. On Windows this is `%APPDATA%\BeltPulleyCalculator`. Moving or updating the downloaded repository keeps that saved sketch. The desktop app and browser version have separate saved designs; an existing browser sketch is not automatically copied into desktop mode.
+The last sketch saves automatically in browser storage. Saved designs belong to that browser and website address. Use the same browser and address to reopen your saved sketch; clearing site data removes the saved design.
 
-### Browser development
+## Build the website
 
-To run the existing browser version:
+Create the static website files:
 
 ```sh
-npm install
-npm run dev
+npm run build
 ```
 
-Open the local URL printed in the terminal, usually `http://localhost:5173`. Leave that terminal open while using the browser version.
+The finished website is in `dist/`. Serve or publish that folder with a static website host. For a local preview of those files, run:
 
-Use `npm run test` for the geometry, editing, viewport, and persistence checks, and `npm run build` for a production build.
+```sh
+npm run preview
+```
+
+For development without automatically opening a browser, use `npm run dev`. Use `npm run test` for the existing geometry, editing, viewport, and persistence checks.
 
 ## Sketching
 
