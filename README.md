@@ -1,60 +1,73 @@
-# Belt Pulley Calculator
+# Pitch
 
-A browser-based, 2D belt-layout workspace built with React, TypeScript, Vite, and SVG. The starter design has four pulleys and saves automatically in your browser. Calculations run locally on your computer.
+Pitch is a desktop sized drivetrain editor for robotics builders. Lay out gears, pulleys, belts, and shared axles, dimension shaft centers, and compare drive ratios.
 
-## Download and run locally
+## Download the desktop app
 
-1. Install **[Node.js 24 LTS](https://nodejs.org/en/download)**, which includes npm. Node.js 22.12 or newer is required.
-2. On the GitHub repository page, choose **Code → Download ZIP**, then extract the ZIP. You can also clone the repository with Git.
-3. Open a terminal in the extracted folder containing `package.json`.
-4. Install the dependencies, then start the website:
+### Windows 10 or 11
 
-```sh
-npm install
-npm start
-```
+1. [Download Pitch for Windows](https://github.com/RishiNxp/pitch-desktop/releases/latest/download/Pitch-Windows-x64.zip).
+2. In File Explorer, right click the ZIP and choose **Extract All**.
+3. Open the extracted **Pitch** folder and run **Pitch.exe**.
 
-The calculator opens automatically in your browser, usually at `http://127.0.0.1:5173`. Use the address printed in the terminal if that port is busy. Leave the terminal open while using the website and press `Ctrl+C` to stop it. On later launches, run only `npm start`.
+Keep the extracted folder together. Pitch includes its runtime and works offline. Windows may identify the portable app as an unsigned download.
 
-**Windows:** after installing Node.js and extracting the ZIP, double-click **`Start Calculator.cmd`**. It installs missing dependencies on the first launch and opens the website in your browser. Leave its window open while using the calculator. In PowerShell, use `npm.cmd` instead of `npm` if PowerShell blocks npm scripts.
+### macOS
 
-Internet is required for the first dependency installation. After setup, `npm start` serves the website locally and works offline.
+Open the [Pitch for macOS releases](https://github.com/RishiNxp/pitch-mac/releases) and choose **arm64** for Apple Silicon or **x64** for Intel. Extract the ZIP and move **Pitch.app** to Applications.
 
-For a clean, repeatable installation, use `npm ci` in place of `npm install`. Keep `package-lock.json` in the repository; do not include `node_modules` or `dist`.
+The latest public Mac build is v1.0.0. It is ad hoc signed and not notarized, so it does not pass Apple's normal Gatekeeper checks. A signed, notarized release will be posted on the same releases page after the required Apple developer credentials are configured.
 
-When updating the source with Git, stop the local server and run `npm ci` again before launching so any changed dependencies are installed.
+## Push changes to GitHub
 
-### Saved designs
+Install Git, then clone this source repository:
 
-The last sketch saves automatically in browser storage. Saved designs belong to that browser and website address. Use the same browser and address to reopen your saved sketch; clearing site data removes the saved design.
+~~~sh
+git clone https://github.com/RishiNxp/Belt-Pulley-Calculator.git
+cd Belt-Pulley-Calculator
+git switch -c docs/my-change
+~~~
 
-## Build the website
+After editing, review and push your work:
 
-Create the static website files:
+~~~sh
+git status
+git add README.md
+git commit -m "Update project documentation"
+git push -u origin docs/my-change
+~~~
 
-```sh
-npm run build
-```
+Replace **README.md** with the paths you changed, or use **git add -A** to stage all changes. Open a pull request on GitHub to propose your branch. Direct pushes to the official repositories require write access. If you do not have it, fork the repository first and push your branch to your fork.
 
-The finished website is in `dist/`. Serve or publish that folder with a static website host. For a local preview of those files, run:
+## Publish an updated desktop app
 
-```sh
-npm run preview
-```
+The app source and release packages use separate repositories. Pushing to this source repository does not update the downloadable app.
 
-For development without automatically opening a browser, use `npm run dev`. Use `npm run test` for the existing geometry, editing, viewport, and persistence checks.
+For Windows releases, clone [pitch-desktop](https://github.com/RishiNxp/pitch-desktop). On Windows, run **npm ci**, **npm test**, then **.\Build-Windows.ps1**. Commit and push the changes, then push a new version tag such as **v1.1.2**. The tag starts the GitHub Actions build and publishes the ZIP to the [Windows releases page](https://github.com/RishiNxp/pitch-desktop/releases).
 
-## Sketching
+For the website, push a commit to **main** in [pitch-web](https://github.com/RishiNxp/pitch-web). GitHub Pages builds and publishes it automatically.
 
-- Select, pan, add pulleys, create a route, and add smooth back tensioners to a belt segment from the toolbar.
-- With Add Pulley active, click a straight belt span to insert a 20T pulley directly into that route. Click empty space to place a separate pulley. Drag or edit an inserted pulley normally; deleting it repairs the belt route.
-- While creating a route, click components in order and click the first component again to close it.
-- Add horizontal, vertical, or center-distance dimensions by selecting two centers, moving the preview, and clicking to place it. Double-click a dimension value to edit it in place.
-- Click a dimension to select its red highlight; use Delete/Backspace to remove it or Escape to deselect. Pulleys and the belt remain.
-- Sketch coordinates use +X right and +Y up. Dimensions and alignment constraints stay in millimeters as you pan or zoom.
-- Horizontal and vertical constraints keep paired coordinates aligned during edits. The origin pulley stays fixed at (0, 0).
-- Drag components, use the mouse wheel to zoom, and press `Ctrl/⌘ Z` or `Ctrl/⌘ Shift Z` to undo or redo.
-- Choose GT2, GT3, or HTD 5M; the calculator reports the nearest integer belt tooth count, nominal length, geometric length, signed errors, and tolerance status.
-- Choose connected driver/output pulleys in the compact Drive section to see reduction, speed, ideal torque, and optional output RPM. Smooth tensioners do not enter these ratios.
+For macOS releases, use [pitch-mac](https://github.com/RishiNxp/pitch-mac) and push a version tag after configuring its signing and Apple notarization secrets. The release workflow checks the signature, notarization ticket, and Gatekeeper assessment before publishing.
 
-See [BUG_REVIEW.md](BUG_REVIEW.md) for this pass's confirmed fixes and verification results.
+## Run the calculator from source
+
+Use Node.js 22.12 or newer and npm:
+
+~~~sh
+npm ci
+npm run dev
+~~~
+
+Run **npm test** for the logic suite. Run **npm run build** to type check and create the production site in **dist**.
+
+## Use Pitch
+
+- Place pulleys, gears, or tensioners from the toolbar.
+- Drag compatible gears together until both pitch circles turn green to mesh them.
+- Right click an axle to add a part or change the stack order.
+- Choose **Create belt**, select pulleys, then press Enter to finish the belt.
+- Drag a tensioner or compatible free pulley onto a belt. Right click it to edit or remove it.
+- Use the dimension tools to constrain center distances. Choose a train, driver, and driven output in the drive panel.
+- Refresh restores the saved layout in the same browser. Use **Save file** to export a portable layout.
+
+Pitch models planar layouts and ideal speed ratios. It does not model load capacity, backlash, or material strength.
