@@ -1,3 +1,4 @@
+import { gearMeshCenterDistance } from './transmission';
 import type { Point, Sketch } from './model';
 
 const FIXED = Symbol('fixed origin');
@@ -10,18 +11,42 @@ const close = (a: number, b: number) => Math.abs(a - b) <= 1e-7 + 1e-10 * Math.m
 // Resolve connected components, then solve aligned distances through their free axes.
 // Conflicting edits return null; no partial geometry is committed.
 export function solveSketchRelations(sketch: Sketch, preferredAnchorId?: string): Sketch | null {
+  return solve(sketch, preferredAnchorId, true) ?? solve(sketch, preferredAnchorId, false);
+}
+
+function solve(sketch: Sketch, preferredAnchorId: string | undefined, preserveMeshAngles: boolean): Sketch | null {
   const points = new Map<Key, Point>([
     [FIXED, { x: 0, y: 0 }],
     ...[...sketch.pulleys, ...sketch.idlers].map(object => [object.id, { x: object.x, y: object.y }] as [Key, Point]),
   ]);
 
+  const tr = sketch.transmission;
+  for (const gear of tr?.gears ?? []) {
+    const axle = tr!.axles.find(a => a.id === gear.axleId);
+    if (!axle) return null;
+    points.set(gear.id, { x: axle.x, y: axle.y });
+  }
+  const meshDistances = (tr?.meshes ?? []).map(mesh => {
+    const first = tr!.gears.find(g => g.id === mesh.gearAId)!;
+    const second = tr!.gears.find(g => g.id === mesh.gearBId)!;
+    const a = points.get(first.id)!, b = points.get(second.id)!;
+    const angle = mesh.angleDeg === undefined ? Math.atan2(b.y-a.y,b.x-a.x) : mesh.angleDeg * Math.PI / 180;
+    return {fromId:first.id, toId:second.id, valueMm:gearMeshCenterDistance(first, second), angle};
+  });
   const solveAxis = (axis: Axis): Map<Key, AxisGroup> | null => {
     const graph = new Map([...points.keys()].map(id => [id, [] as { id: Key; difference: number }[]]));
     const connect = (from: Key, to: Key, difference: number) => {
       graph.get(from)?.push({ id: to, difference });
       graph.get(to)?.push({ id: from, difference: -difference });
     };
+    for (const axle of sketch.transmission?.axles ?? []) {
+      const members = axle.componentIds.filter(id => points.has(id));
+      for (const id of members.slice(1)) connect(members[0]!, id, 0);
+    }
     for (const pulley of sketch.pulleys) if (pulley.isOrigin) connect(FIXED, pulley.id, 0);
+    if (preserveMeshAngles) for (const mesh of meshDistances) {
+      connect(mesh.fromId, mesh.toId, mesh.valueMm * (axis === 'x' ? Math.cos(mesh.angle) : Math.sin(mesh.angle)));
+    }
     for (const constraint of sketch.constraints) {
       if ((constraint.kind === 'vertical' ? 'x' : 'y') === axis) connect(constraint.firstId, constraint.secondId, 0);
     }
@@ -51,7 +76,7 @@ export function solveSketchRelations(sketch: Sketch, preferredAnchorId?: string)
       group.locked = group.members.has(FIXED);
       const base = group.locked ? -group.members.get(FIXED)! : points.get(seed)![axis];
       for (const [id, offset] of group.members) {
-        points.get(id)![axis] = base + offset;
+        if (!close(points.get(id)![axis], base + offset)) points.get(id)![axis] = base + offset;
         groups.set(id, group);
       }
     }
@@ -68,7 +93,7 @@ export function solveSketchRelations(sketch: Sketch, preferredAnchorId?: string)
     const base = coordinate - group.members.get(id)!;
     for (const [member, offset] of group.members) points.get(member)![axis] = base + offset;
   };
-  const aligned = sketch.dimensions.filter(dimension => dimension.kind === 'aligned');
+  const aligned = [...sketch.dimensions.filter(dimension => dimension.kind === 'aligned'), ...meshDistances];
   const satisfied = () => aligned.every(dimension => {
     const first = points.get(dimension.toId ? dimension.fromId : FIXED)!;
     const second = points.get(dimension.toId ?? dimension.fromId)!;
@@ -118,5 +143,15 @@ export function solveSketchRelations(sketch: Sketch, preferredAnchorId?: string)
     const point = points.get(object.id)!;
     return point.x === object.x && point.y === object.y ? object : { ...object, ...point };
   };
-  return { ...sketch, pulleys: sketch.pulleys.map(position), idlers: sketch.idlers.map(position) };
+  const transmission = sketch.transmission;
+  return { ...sketch, pulleys: sketch.pulleys.map(position), idlers: sketch.idlers.map(position),
+    ...(transmission && { transmission: { ...transmission, meshes: transmission.meshes.map(mesh => {
+      if (preserveMeshAngles) return mesh;
+      const a = points.get(mesh.gearAId)!, b = points.get(mesh.gearBId)!;
+      return { ...mesh, angleDeg: Math.atan2(b.y-a.y,b.x-a.x)*180/Math.PI };
+    }), axles: transmission.axles.map(axle => {
+      const member = axle.componentIds.find(id => points.has(id));
+      return member ? { ...axle, ...points.get(member)! } : axle;
+    }) } }),
+  };
 }

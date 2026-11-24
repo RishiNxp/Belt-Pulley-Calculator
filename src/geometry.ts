@@ -33,6 +33,7 @@ type SolvedPath = {
 
 const profilePitches: Record<BeltProfile, number> = {
   GT2: 2,
+  'GT2 3mm': 3,
   GT3: 3,
   'HTD 5M': 5,
 };
@@ -143,7 +144,7 @@ function validateSketch(sketch: Sketch): { route: BeltObject[] } | { error: stri
       return { error: `${idler.label} has an invalid position.` };
     }
     const radiusMm = idler.diameterMm / 2;
-    route.push({ ...idler, kind: 'idler', radiusMm, signedRadiusMm: -radiusMm });
+    route.push({ ...idler, kind: 'idler', radiusMm, signedRadiusMm: idler.tensionSide === 'inside' ? radiusMm : -radiusMm });
   }
 
   if (route.filter((item) => item.kind === 'pulley').length < 2) {
@@ -269,7 +270,9 @@ function solvePath(route: BeltObject[]): SolvedPath | string {
     const incoming = tangents[(index + route.length - 1) % route.length]!.end;
     const outgoing = tangents[index]!.start;
     const startAngle = Math.atan2(incoming.y - object.y, incoming.x - object.x);
-    const contactDirection = object.kind === 'idler' ? (direction === 1 ? -1 : 1) : direction;
+    const contactDirection = object.kind === 'idler' && object.tensionSide !== 'inside'
+      ? (direction === 1 ? -1 : 1)
+      : direction;
     const endAngle = startAngle + directedSweep(
       startAngle,
       Math.atan2(outgoing.y - object.y, outgoing.x - object.x),
@@ -322,7 +325,7 @@ function toObjectMaps(sketch: Sketch): Map<string, BeltObject> {
   }
   for (const idler of sketch.idlers) {
     const radiusMm = idler.diameterMm / 2;
-    items.set(idler.id, { ...idler, kind: 'idler', radiusMm, signedRadiusMm: -radiusMm });
+    items.set(idler.id, { ...idler, kind: 'idler', radiusMm, signedRadiusMm: idler.tensionSide === 'inside' ? radiusMm : -radiusMm });
   }
   return items;
 }

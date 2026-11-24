@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { createDemoSketch } from './demo';
 import { reduceSketch } from './state';
 import { calculateBeltGeometry } from './geometry';
 import type { HistoryState, Pulley, Sketch } from './model';
@@ -31,6 +32,57 @@ function sampleSketch(): Sketch {
 }
 
 describe('sketch state', () => {
+  it('adds a meshed mate at pitch-center distance and moves its axle', () => {
+    const sketch: Sketch = { ...sampleSketch(), transmission: {
+      axles: [{ id: 'AX-G1', x: 10, y: 20, componentIds: ['G1'] }], belts: [],
+      gears: [{ id: 'G1', name: 'Pinion', axleId: 'AX-G1', plane: 0, toothCount: 24, moduleMm: 0.8, pressureAngleDeg: 20, boreMm: 8 }], meshes: [],
+    } };
+    const added = reduceSketch(history(sketch), { type: 'ADD_MESHED_GEAR', hostId: 'G1', angleDeg: 90, meshId: 'M1', gear: { id: 'G2', name: 'Gear 2', axleId: 'AX-G2', plane: 0, toothCount: 24, moduleMm: 0.8, pressureAngleDeg: 20, boreMm: 8 } });
+    expect(added.present.transmission?.meshes).toEqual([{ id: 'M1', gearAId: 'G1', gearBId: 'G2', plane: 0, angleDeg: 90 }]);
+    const mateAxle = added.present.transmission?.axles.find(axle => axle.id === 'AX-G2');
+    expect(mateAxle?.x).toBeCloseTo(10);
+    expect(mateAxle?.y).toBeCloseTo(39.2);
+    const moved = reduceSketch(added, { type: 'MOVE_OBJECT', id: 'G2', x: 15, y: 40 });
+    const orbit = moved.present.transmission!.axles.find(axle => axle.id === 'AX-G2')!;
+    expect(orbit).toMatchObject({x:15,y:40});
+    const follower = moved.present.transmission!.axles.find(a=>a.componentIds.includes('G1'))!;
+    expect(follower.x).toBeCloseTo(15);
+    expect(follower.y).toBeCloseTo(20.8);
+    const resized = reduceSketch(added, { type: 'UPDATE_GEAR', id: 'G2', toothCount: 48 });
+    const resizedAxle = resized.present.transmission?.axles.find(axle => axle.id === 'AX-G2');
+    expect(Math.hypot(resizedAxle!.x - 10, resizedAxle!.y - 20)).toBeCloseTo(28.8);
+    const reverse = reduceSketch(resized, { type: 'MOVE_OBJECT', id: 'G1', x: 80, y: 70 });
+    expect(reverse.present.transmission?.axles.find(axle => axle.id === 'AX-G2')).toEqual(resizedAxle);
+    const host = reverse.present.transmission!.axles.find(axle => axle.componentIds.includes('G1'))!;
+    expect(Math.hypot(host.x - resizedAxle!.x, host.y - resizedAxle!.y)).toBeCloseTo(28.8);
+    expect(host.x).toBeGreaterThan(10);
+  });
+  it('adds and activates belt stages as undoable state while projecting the active route', () => {
+    const initial: Sketch = { ...sampleSketch(), route: ['P1', 'P2', 'P3', 'P1'] };
+    const first = reduceSketch(history(initial), { type: 'ADD_BELT_STAGE', id: 'B2', profile: 'HTD 5M' });
+    expect(first.present.activeBeltId).toBe('B2');
+    expect(first.present.route).toEqual([]);
+    expect(first.present.transmission?.belts).toHaveLength(2);
+    const undo = reduceSketch(first, { type: 'UNDO' });
+    expect(undo.present.route).toEqual(initial.route);
+    const second = reduceSketch(first, { type: 'SET_ACTIVE_BELT', id: 'B1' });
+    expect(second.present.route).toEqual(initial.route);
+    expect(second.present.profile).toBe('GT2');
+  });
+  it('keeps timing profiles independent across two belt stages', () => {
+    const firstRoute: Sketch = { ...sampleSketch(), route: ['P1', 'P2', 'P3', 'P1'] };
+    let state = reduceSketch(history(firstRoute), { type: 'ADD_BELT_STAGE', id: 'B2', profile: 'HTD 5M' });
+    state = reduceSketch(state, { type: 'ROUTE_CLICK', objectId: 'P1' });
+    state = reduceSketch(state, { type: 'ROUTE_CLICK', objectId: 'P3' });
+    state = reduceSketch(state, { type: 'ROUTE_CLICK', objectId: 'P2' });
+    state = reduceSketch(state, { type: 'ROUTE_CLICK', objectId: 'P1' });
+    state = reduceSketch(state, { type: 'SET_BELT_PROFILE', profile: 'GT3' });
+    state = reduceSketch(state, { type: 'SET_ACTIVE_BELT', id: 'B1' });
+    state = reduceSketch(state, { type: 'SET_BELT_PROFILE', profile: 'GT2' });
+    expect(state.present.transmission?.belts.find(belt => belt.id === 'B1')?.profile).toBe('GT2');
+    expect(state.present.transmission?.belts.find(belt => belt.id === 'B2')?.profile).toBe('GT3');
+    expect(state.present.pulleys.every(pulley => !state.present.route.includes(pulley.id) || pulley.profile === 'GT2')).toBe(true);
+  });
   it('firstPulleyIsOrigin', () => {
     const next = reduceSketch(history(makeSketch([])), {
       type: 'ADD_PULLEY',
@@ -132,7 +184,26 @@ describe('sketch state', () => {
       segment: { fromId: 'P2', toId: 'P3' },
     });
     expect(state.present.route).toEqual(['P1', 'P2', 'T1', 'P3', 'P1']);
-    expect(state.present.idlers).toContainEqual({ id: 'T1', label: 'T1', diameterMm: 12, x: 50, y: 20 });
+    expect(state.present.idlers[0]).toMatchObject({ id: 'T1', label: 'T1', diameterMm: 12, x: 50, y: 20, beltId: null, locked: true });
+  });
+
+  it('latches a free tensioner to a belt and unlocks it without deleting it', () => {
+    const initial = createDemoSketch();
+    let state = reduceSketch(history(initial), {
+      type: 'ADD_IDLER', idler: { id: 'T1', label: 'T1', diameterMm: 20, x: 20, y: 20 },
+    });
+    expect(state.present.route).toEqual(initial.route);
+    expect(state.present.idlers[0]).toMatchObject({ beltId: null, locked: false, tensionSide: 'outside' });
+
+    state = reduceSketch(state, {
+      type: 'LATCH_IDLER', id: 'T1', beltId: 'B1', fromId: 'P1', toId: 'P2', point: { x: 30, y: 20 },
+    } as never);
+    expect(state.present.route).toEqual(['P1', 'T1', 'P2', 'P3', 'P4', 'P1']);
+    expect(state.present.idlers[0]).toMatchObject({ beltId: 'B1', locked: true, x: 30, y: 20 });
+
+    state = reduceSketch(state, { type: 'UNLATCH_IDLER', id: 'T1' } as never);
+    expect(state.present.route).toEqual(initial.route);
+    expect(state.present.idlers[0]).toMatchObject({ beltId: null, locked: false });
   });
 
   it('keepsTheOriginFixedWhenEditingACenterDistanceToIt', () => {
@@ -317,4 +388,15 @@ describe('sketch state', () => {
     expect(state).toBe(before);
     expect(state.past).toHaveLength(1);
   });
+});
+
+it('carries a meshed gear when dimensioning its host pulley and aligns a gear center', () => {
+  const gear = { id: 'G1', name: 'Pinion', axleId: 'AX-P2', plane: 0, toothCount: 20, moduleMm: 1, pressureAngleDeg: 20, boreMm: 8 };
+  let h = reduceSketch(history(sampleSketch()), {type:'ADD_GEAR', gear, hostId:'P2', x:10, y:20});
+  h = reduceSketch(h, {type:'ADD_MESHED_GEAR', hostId:'G1', gear:{...gear,id:'G2',axleId:'AX-G2'}, angleDeg:0, meshId:'M1'});
+  h = reduceSketch(h, {type:'ADD_DIMENSION', dimension:{id:'D1',kind:'horizontal',fromId:'P1',toId:'P2',valueMm:70,offsetMm:10}});
+  expect(h.present.transmission!.axles.find(a => a.id === 'AX-G2')!.x).toBeCloseTo(90);
+  h = reduceSketch(h, {type:'ADD_CONSTRAINT', constraint:{id:'C1',kind:'horizontal',firstId:'P1',secondId:'G2'}});
+  expect(h.present.transmission!.axles.find(a => a.id === 'AX-G2')!.y).toBeCloseTo(0);
+  expect(h.present.pulleys.find(p => p.id === 'P2')!.y).toBeCloseTo(0);
 });

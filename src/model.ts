@@ -1,7 +1,8 @@
-export type BeltProfile = 'GT2' | 'GT3' | 'HTD 5M';
+export type BeltProfile = 'GT2' | 'GT2 3mm' | 'GT3' | 'HTD 5M';
 export type SketchTool =
   | 'select'
   | 'pan'
+  | 'add-gear'
   | 'add-pulley'
   | 'add-idler'
   | 'route'
@@ -13,8 +14,10 @@ export type SketchTool =
   | 'delete';
 
 export type Point = { x: number; y: number };
+import type { Transmission } from './transmission';
 
 export type Pulley = {
+  catalogSku?: string;
   id: string;
   label: string;
   toothCount: number;
@@ -24,12 +27,17 @@ export type Pulley = {
   isOrigin: boolean;
 };
 
+export type TensionSide = 'outside' | 'inside';
+
 export type Idler = {
   id: string;
   label: string;
   diameterMm: number;
   x: number;
   y: number;
+  beltId?: string | null;
+  locked?: boolean;
+  tensionSide?: TensionSide;
 };
 
 export type SketchDimension = {
@@ -54,11 +62,13 @@ export type Sketch = {
   pulleys: Pulley[];
   idlers: Idler[];
   route: string[];
+  transmission?: Transmission;
+  activeBeltId?: string | null;
   dimensions: SketchDimension[];
   constraints: SketchConstraint[];
   toleranceTeeth: number;
   availableBeltTeeth: number[];
-  drive?: { driverId: string | null; outputId: string | null; driverRpm: number | null };
+  drive?: { torque?: string; efficiency?: string; diameter?: string; motor?: string; driverId: string | null; outputId: string | null; driverRpm: number | null };
   view: { centerX: number; centerY: number; zoom: number };
 };
 

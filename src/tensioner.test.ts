@@ -4,7 +4,7 @@ import { calculateBeltGeometry } from './geometry';
 import { createTensionerOnSpan, findBeltSpan } from './tensioner';
 import { reduceSketch } from './state';
 import { worldToScreen } from './viewport';
-import type { LineSegment, Sketch } from './model';
+import type { Idler, LineSegment, Point, Sketch } from './model';
 
 function insert(sketch: Sketch, span: LineSegment, id = 'T1') {
   const click = { x: (span.start.x + span.end.x) / 2, y: (span.start.y + span.end.y) / 2 };
@@ -48,6 +48,25 @@ describe('tensioner creation', () => {
     const added = insert(sketch, span);
     expect(added.idlers[0]!.diameterMm).toBeLessThan(30);
     expect(calculateBeltGeometry(added).valid).toBe(true);
+  });
+
+  it('supports inside tensioning with the requested side and belt geometry', () => {
+    const sketch = createDemoSketch();
+    const before = calculateBeltGeometry(sketch);
+    const span = before.segments.find(segment => segment.kind === 'line') as LineSegment;
+    const click: Point = { x: (span.start.x + span.end.x) / 2, y: (span.start.y + span.end.y) / 2 };
+    const createWithSide = createTensionerOnSpan as unknown as (
+      sketch: Sketch, span: LineSegment, click: Point, id: string, side: 'outside' | 'inside',
+    ) => Idler | null;
+    const idler = createWithSide(sketch, span, click, 'T1', 'inside');
+    expect(idler?.tensionSide).toBe('inside');
+    expect(idler).not.toBeNull();
+    const attached = reduceSketch({ present: sketch, past: [], future: [], activeEdit: null }, {
+      type: 'ADD_IDLER', idler: idler!, segment: { fromId: span.fromId, toId: span.toId },
+    }).present;
+    const geometry = calculateBeltGeometry(attached);
+    expect(geometry.valid).toBe(true);
+    expect(geometry.lengthMm).toBeGreaterThan(before.lengthMm!);
   });
 
   it('keeps the closing edge identity and supports a second idler', () => {
